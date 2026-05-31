@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>roppy</title>
+  <style>
+    /* ===== 🎨 テーマ共通・ライトモードの基本色 ===== */
+    :root {
+      --bg-color: #fdfdfd;
+      --text-color: #333333;
+      --card-bg: white;
+      --banner-bg: #eeeeee;
+      --banner-text: #555555;
+      --choice-bg: white;
+      --choice-text: #333333;
+    }
+
+    /* ===== 🌙 ダークモード用の色 ===== */
+    [data-theme="dark"] {
+      --bg-color: #121212;
+      --text-color: #e0e0e0;
+      --card-bg: #1e1e1e;
+      --banner-bg: #2d2d2d;
+      --banner-text: #bbbbbb;
+      --choice-bg: #2d2d2d;
+      --choice-text: #e0e0e0;
+    }
+
+    body { text-align:center; font-family:sans-serif; background: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; transition: background 0.3s, color 0.3s; }
+    h1 { font-size:35px; margin-top: 20px; margin-bottom: 5px; }
+
+    /* ===== 💬 応援メッセージボード ===== */
+    .cheer-box {
+      max-width: 450px; margin: 15px auto; padding: 12px 20px; background: linear-gradient(135deg, #fff5cc 0%, #fffbfa 100%); border-left: 5px solid #ff9800; border-radius: 4px 12px 12px 4px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); font-weight: bold; color: #e65100; font-size: 16px; line-height: 1.4;
+    }
+    [data-theme="dark"] .cheer-box {
+      background: linear-gradient(135deg, #2d2200 0%, #221a1a 100%); border-left: 5px solid #ff9800; color: #ffd54f; box-shadow: none;
+    }
+
+    /* ===== キャンバス（エフェクト用） ===== */
+    #confettiCanvas {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      pointer-events: none; z-index: 9999;
+    }
+
+    /* ===== ボタン全般 ===== */
+    button {
+      font-size:20px; padding:12px; margin:8px; width:260px; border-radius:12px; border:none; color:white; font-weight:bold; cursor:pointer; transition: all 0.08s ease; box-shadow: 0 5px 0 rgba(0,0,0,0.15);
+    }
+    button:hover { filter: brightness(1.15); box-shadow: 0 6px 12px rgba(0,0,0,0.2); }
+    button:active { transform: translateY(4px) scale(0.96); box-shadow: 0 1px 0 rgba(0,0,0,0.3) inset; }
+
+    /* 色 */
+    .red { background:#ff4d4d; }
+    .blue { background:#4da6ff; }
+    .green { background:#4CAF50; }
+    .orange { background:#ff9800; }
+    .black { background:#333; }
+    [data-theme="dark"] .black { background: #444; }
+
+    /* 上部固定ヘッダーエリア（戻るボタン用） */
+    .header-bar {
+      width: 100%; padding: 10px 0; background: rgba(0,0,0,0.03); border-bottom: 1px solid rgba(0,0,0,0.05); text-align: center; margin-bottom: 15px;
+    }
+    [data-theme="dark"] .header-bar {
+      background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .back-top-btn { width: 180px; padding: 8px; font-size: 16px; margin: 0; }
+
+    /* 選択肢エリア */
+    #choices, #r_choices { max-width: 600px; margin: 0 auto; padding-bottom: 10px; }
+    .choice { background: var(--choice-bg); color: var(--choice-text); border:2px solid #4da6ff; box-shadow: 0 4px 0 rgba(77,166,255,0.2); position: relative; }
+    .choice:hover { background:#4da6ff; color:white; }
+    
+    /* 正解・不正解の選択肢カラー */
+    .choice.correct-choice { background:#4CAF50 !important; color:white !important; border-color:#4CAF50 !important; box-shadow: none; }
+    .choice.wrong-choice { background:#ff4d4d !important; color:white !important; border-color:#ff4d4d !important; box-shadow: none; }
+    
+    /* 次へボタン */
+    .next-btn { background:#ff4d4d; color:white; font-size:22px; padding:12px 50px; border-radius:12px; width:auto; box-shadow: 0 6px 0 #c0392b; }
+    .next-container { text-align:center; height: 75px; margin-top: 5px; margin-bottom: 15px; display: flex; justify-content: center; align-items: center; }
+    .mode-title { background:green; color:white; padding:10px; font-size:25px; font-weight: bold; }
+    
+    /* 正解・不正解テキストの表示エリア */
+    .result-text-box { font-size: 24px; font-weight: bold; min-height: 40px; margin-top: 15px; }
+    
+    /* 通常コンボカウンターエリア */
+    .combo-container-box { height: 40px; margin: 5px 0; position: relative; overflow: visible; display: flex; justify-content: center; align-items: center; }
+    .flash-combo {
+      position: absolute; font-size: 28px; font-weight: 900; color: #ff9800; font-style: italic; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); opacity: 0; pointer-events: none;
+    }
+    @keyframes comboFlashAnim {
+      0% { transform: scale(0.5) translateY(10px); opacity: 0; }
+      15% { transform: scale(1.2) translateY(0px); opacity: 1; }
+      30% { transform: scale(1.0) translateY(0px); opacity: 1; }
+      80% { transform: scale(1.0) translateY(-10px); opacity: 1; }
+      100% { transform: scale(0.8) translateY(-25px); opacity: 0; }
+    }
+
+    /* 大台コンボポップアップ */
+    .combo-popup { 
+      position: fixed; top: 35%; left: 50%; transform: translate(-50%, -50%) scale(0); 
+      font-size: 52px; font-weight: 900; z-index: 10000; pointer-events: none; 
+      text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 5px 20px rgba(0,0,0,0.4); 
+      font-style: italic; 
+    }
+    @keyframes comboAnim {
+      0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+      12% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+      25% { transform: translate(-50%, -50%) scale(1.0); opacity: 1; }
+      80% { transform: translate(-50%, -50%) scale(1.0); opacity: 1; }
+      100% { transform: translate(-50%, -55%) scale(0.7); opacity: 0; }
+    }
+
+    /* スライドショー */
+    .slide-container { margin: 30px auto; min-height: 180px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+    .slide-english { font-size: 45px; font-weight: bold; color: var(--text-color); margin-bottom: 15px; }
+    .slide-meaning { font-size: 28px; color: #666; }
+    [data-theme="dark"] .slide-meaning { color: #aaa; }
+    
+    .icon-btn { width:50px; font-size:16px; padding:5px; margin-left:10px; color: white; background: #555; vertical-align: middle; box-shadow: none; }
+    
+    /* トグルスイッチ */
+    .settings-item { display: flex; justify-content: space-between; align-items: center; max-width: 320px; margin: 10px auto; padding: 5px 10px; }
+    .settings-item p { margin: 0; font-size: 18px; font-weight: bold; }
+    .switch { display:inline-block; width:60px; height:30px; background:#ccc; border-radius:30px; position:relative; cursor:pointer;}
+    .switch::after { content:""; width:26px; height:26px; background:white; position:absolute; top:2px; left:2px; border-radius:50%; transition:0.3s;}
+    .switch.active { background:#4CAF50; }
+    .switch.active::after { left:32px; }
+
+    /* 単語帳 */
+    .card-container { margin: 30px auto; min-height: 180px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+    .card-english { font-size: 45px; font-weight: bold; color: var(--text-color); margin-bottom: 15px; }
+    .card-meaning { font-size: 28px; color: #666; }
+    [data-theme="dark"] .card-meaning { color: #aaa; }
+    .card-ctrl-btn { width: 120px; margin: 10px; background: #555; }
+    .card-ctrl-btn:disabled { background: #ccc; cursor: not-allowed; box-shadow: none; transform: none; }
+
+    /* スコア表示 */
+    .score-banner { font-size: 16px; font-weight: bold; color: var(--banner-text); margin: 10px auto; background: var(--banner-bg); padding: 6px 15px; border-radius: 20px; display: inline-block; }
+
+    /* ===== 🏆 特設リザルト画面 ===== */
+    .result-screen {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 999; animation: fadeIn 0.4s ease forwards;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: scale(1.05); } to { opacity: 1; transform: scale(1); } }
+    
+    .result-screen.pass-bg { background: linear-gradient(135deg, #ffe066 0%, #f5af19 100%); color: #333; }
+    .result-screen.fail-bg { background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%); color: white; }
+    .result-screen.return-clear-bg { background: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%); color: white; }
+    .result-title { font-size: 60px; font-weight: 900; text-shadow: 0 4px 10px rgba(0,0,0,0.2); margin-bottom: 10px; }
+    .result-sub { font-size: 24px; font-weight: bold; margin-bottom: 30px; opacity: 0.9; }
+    .result-score { font-size: 45px; font-weight: bold; background: rgba(255,255,255,0.25); padding: 15px 40px; border-radius: 50px; margin-bottom: 40px; backdrop-filter: blur(5px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+    .fail-bg .result-score { background: rgba(0,0,0,0.3); }
+    .result-btn-group button { width: 220px; margin: 10px; font-size: 22px; padding: 15px; }
+
+    /* 空画面 */
+    .empty-state-container { margin: 40px auto; padding: 30px; max-width: 500px; background: var(--card-bg); border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+    .empty-emoji { font-size: 80px; margin-bottom: 20px; }
+    .empty-text { font-size: 22px; font-weight: bold; color: var(--text-color); line-height: 1.6; margin-bottom: 30px; }
+  </style>
+</head>
+<body>
+
+  <canvas id="confettiCanvas"></canvas>
+  <div id="comboPopup" class="combo-popup"></div>
+
+  <!-- ホーム画面 -->
+  <div id="home" style="padding: 20px;">
+    <h1>単語暗記アプリ roppy</h1>
+    
+    <!-- 💬 応援メッセージ表示エリア -->
+    <div id="cheerMessage" class="cheer-box"></div>
+
+    <button class="red" onclick="showStudyMenu()">📖 暗記モード</button><br>
+    <button class="blue" onclick="showTestMenu()">📝 テスト</button><br>
+    <button class="green" onclick="goReturn()">🔁 リターン学習</button><br>
+    <button class="black" onclick="openSettings()">⚙ 設定</button><br>
+    <div id="scoreDisplay" class="score-banner"></div><br>
+    <button class="orange" onclick="resetDataPrompt()">🗑 リセット</button>
+  </div>
+
+  <!-- 暗記モード子メニュー -->
+  <div id="studyMenu" style="display:none;">
+    <div class="header-bar"><button onclick="goHome()" class="black back-top-btn">← ホームへ戻る</button></div>
+    <h2>暗記モードを選択</h2>
+    <button class="red" onclick="showSlideMenu()">▶ スライドショー</button><br>
+    <button class="orange" onclick="showCardMenu()">📑 単語帳</button>
+  </div>
+
+  <!-- 設定画面 -->
+  <div id="settings" style="display:none;">
+    <div class="header-bar"><button onclick="goHome()" class="black back-top-btn">← ホームへ戻る</button></div>
+    <h2>設定</h2>
+    <div class="settings-item"><p>ダークモード</p><div id="darkSwitch" class="switch" onclick="toggleDarkMode()"></div></div>
+    <div class="settings-item"><p>単語読み上げ</p><div id="soundSwitch" class="switch" onclick="toggleSound()"></div></div>
+    <div class="settings-item"><p>効果音(SE)</p><div id="seSwitch" class="switch" onclick="toggleSE()"></div></div>
+    <div class="settings-item"><p>BGM(音楽)</p><div id="bgmSwitch" class="switch" onclick="toggleBGM()"></div></div>
+    <div class="settings-item"><p>演出エフェクト</p><div id="effectSwitch" class="switch" onclick="toggleEffect()"></div></div>
+    
+    <p>合格レベル</p>
+    <div>
+      <button class="green" onclick="setPass(60)">かんたん（60%）</button><br>
+      <button class="blue" onclick="setPass(80)">ふつう（80%）</button><br>
+      <button class="orange" onclick="setPass(90)">むずかしい（90%）</button><br>
+      <button class="red" onclick="setPass(100)">鬼（100%）</button>
+    </div>
+    <p id="passDisplay"></p>
+  </div>
+
+  <!-- スライドショー範囲選択 -->
+  <div id="slideMenu" style="display:none;">
+    <div class="header-bar"><button onclick="backToStudyMenu()" class="black back-top-btn">← 戻る</button></div>
+    <h2>スライドショー範囲を選択</h2>
+    <div id="slideRangeButtons"></div>
+  </div>
+
+  <!-- スライドショー実行画面 -->
+  <div id="slide" style="display:none;">
+    <div class="header-bar"><button onclick="backToSlideMenu()" class="black back-top-btn">← 範囲選択に戻る</button></div>
+    <div class="mode-title">スライドショーモード</div>
+    <div id="progress" style="margin-top:20px; font-weight: bold;"></div>
+    <div class="slide-container">
+      <div id="slideEnglish" class="slide-english"></div>
+      <div id="slideMeaning" class="slide-meaning"></div>
+    </div>
+    <button id="startBtn" class="red" onclick="startSlide()">▶ スタート！</button>
+    <button id="resumeBtn" class="blue" style="display:none;" onclick="resumeSlide()">▶ 再開</button>
+    <button id="stopBtn" class="orange" style="display:none;" onclick="stopSlide()">⏸ ストップ</button>
+    <button id="restartBtn" class="green" style="display:none;" onclick="restartSlide()">🔄 もう一度</button>
+  </div>
+
+  <!-- 単語帳範囲選択 -->
+  <div id="cardMenu" style="display:none;">
+    <div class="header-bar"><button onclick="backToStudyMenu()" class="black back-top-btn">← 戻る</button></div>
+    <h2>単語帳範囲を選択</h2>
+    <div id="cardRangeButtons"></div>
+  </div>
+
+  <!-- 単語帳実行画面 -->
+  <div id="cardView" style="display:none;">
+    <div class="header-bar"><button onclick="backToCardMenu()" class="black back-top-btn">← 範囲選択に戻る</button></div>
+    <div class="mode-title">単語帳モード</div>
+    <div id="cardProgress" style="margin-top:20px; font-weight: bold;"></div>
+    <div class="card-container">
+      <div id="cardEnglish" class="card-english"></div>
+      <div id="cardMeaning" class="card-meaning"></div>
+    </div>
+    <div>
+      <button id="cardPrevBtn" class="card-ctrl-btn" onclick="prevCard()">← 戻る</button>
+      <button id="cardNextBtn" class="card-ctrl-btn" onclick="nextCard()">次へ →</button>
+    </div>
+  </div>
+
+  <!-- テスト範囲選択 -->
+  <div id="testMenu" style="display:none;">
+    <div class="header-bar"><button onclick="goHome()" class="black back-top-btn">← ホームへ戻る</button></div>
+    <h2>テスト範囲を選択</h2>
+    <div id="rangeButtons"></div>
+  </div>
+
+  <!-- テスト実行画面 -->
+  <div id="test" style="display:none; padding: 0 10px;">
+    <div class="header-bar"><button onclick="backToTestMenu()" class="black back-top-btn">← 範囲選択に戻る</button></div>
+    <div class="mode-title">テストモード</div>
+    <div id="lastScoreDisplay" style="font-size:15px; font-weight: bold; color: #555; background:#eee; padding:5px 15px; border-radius:15px; display:inline-block; margin-top:15px;"></div>
+    <div id="t_progress" style="margin-top:15px; font-weight: bold; font-size: 18px;"></div>
+    
+    <div class="combo-container-box"><div id="t_combo" class="flash-combo"></div></div>
+    
+    <h2 id="question" style="font-size: 38px; margin-top: 5px;"></h2>
+    <div id="choices"></div>
+    
+    <!-- ⭕❌および正解表示エリア -->
+    <div id="result" class="result-text-box"></div>
+    
+    <div class="next-container">
+      <button id="nextBtn" class="next-btn" style="display:none;" onclick="nextQ()">次へ →</button>
+    </div>
+  </div>
+
+  <!-- リターン学習（問題あり） -->
+  <div id="return" style="display:none; padding: 0 10px;">
+    <div class="header-bar"><button onclick="goHome()" class="black back-top-btn">← ホームへ戻る</button></div>
+    <div class="mode-title">リターン学習</div>
+    <div id="r_progress" style="margin-top:20px; font-weight: bold; font-size: 18px;"></div>
+    
+    <div class="combo-container-box"><div id="r_combo" class="flash-combo"></div></div>
+    
+    <h2 id="r_question" style="font-size: 38px; margin-top: 5px;"></h2>
+    <div id="r_choices"></div>
+    
+    <!-- ⭕❌および正解表示エリア -->
+    <div id="r_result" class="result-text-box"></div>
+    
+    <div class="next-container">
+      <button id="r_nextBtn" class="next-btn" style="display:none;" onclick="nextR()">次へ →</button>
+    </div>
+  </div>
+
+  <!-- リターン学習（空画面） -->
+  <div id="returnEmpty" style="display:none; padding: 20px;">
+    <div class="mode-title">リターン学習</div>
+    <div class="empty-state-container">
+      <div class="empty-emoji">✨🥳✨</div>
+      <div class="empty-text">現在、間違えた問題はありません！<br>すべて完璧にマスターしています！</div>
+      <button onclick="goHome()" class="green" style="width: 200px;">🏠 ホームへ戻る</button>
+    </div>
+  </div>
+
+  <!-- 特設リザルト画面 -->
+  <div id="resultScreen" class="result-screen" style="display: none;">
+    <div id="resTitle" class="result-title"></div>
+    <div id="resSub" class="result-sub"></div>
+    <div id="resScore" class="result-score"></div>
+    <div class="result-btn-group">
+      <button id="retryBtn" class="red" style="display:none;">🔄 もう一度挑戦</button>
+      <button id="closeResBtn" class="black" onclick="closeResultScreen()">🏠 戻る</button>
+    </div>
+  </div>
+
+  <script>
+    // ===== 全10単語の完全リスト =====
+    let words = [
+      {english:"argue", meaning:"と主張する，言い争う"},
+      {english:"concentrate", meaning:"集中する"},
+      {english:"delay", meaning:"を遅らせる，を延期する"},
+      {english:"major", meaning:"専攻する / 主要な，多数の"},
+      {english:"achieve", meaning:"を達成する，を成し遂げる"},
+      {english:"lack", meaning:"(に)欠けている，がない"},
+      {english:"refer", meaning:"言及する，参照する"},
+      {english:"burn", meaning:"燃える，を燃やす"},
+      {english:"sink", meaning:"沈む，を沈める"},
+      {english:"consist", meaning:"成る，ある"},
+{english:"regret", meaning:"を後悔する"},
+{english:"treatment", meaning:"治療，取り扱い"},
+{english:"survey", meaning:"調査"},
+{english:"temple", meaning:"寺，神殿"},
+{english:"uniform", meaning:"制服"},
+{english:"agency", meaning:"代理店"},
+{english:"temperature", meaning:"気温，温度，体温"},
+{english:"trend", meaning:"傾向，流行"},
+{english:"surface", meaning:"表面，外見"},
+{english:"throat", meaning:"のど"},
+{english:"profit", meaning:"利益"},
+{english:"workplace", meaning:"職場"},
+{english:"symbol", meaning:"象徴"},
+{english:"web", meaning:"ウェブ，クモの巣"},
+{english:"track", meaning:"線路，走路，跡"},
+{english:"task", meaning:"仕事"},
+{english:"spelling", meaning:"つづり"},
+{english:"summary", meaning:"要約"},
+{english:"thunderstorm", meaning:"雷雨"},
+{english:"diamond", meaning:"ダイヤモンド"},
+{english:"manual", meaning:"説明書"},
+{english:"stomach", meaning:"胃，腹"},
+{english:"theme", meaning:"テーマ"},
+{english:"thought", meaning:"考え"},
+{english:"victory", meaning:"勝利"},
+{english:"sword", meaning:"剣"},
+{english:"volume", meaning:"音量，分量"},
+{english:"effect", meaning:"影響，結果"},
+{english:"material", meaning:"材料"},
+{english:"statement", meaning:"声明"},
+{english:"coast", meaning:"海岸"},
+{english:"fear", meaning:"恐れ"},
+{english:"countryside", meaning:"田舎"},
+{english:"issue", meaning:"号，問題"},
+{english:"condition", meaning:"状態，条件"},
+{english:"crime", meaning:"犯罪"},
+{english:"degree", meaning:"度，程度"},
+{english:"sunlight", meaning:"日光"},
+{english:"capital", meaning:"首都，資本"},
+{english:"behavior", meaning:"行動"},
+{english:"childhood", meaning:"子供のころ"},
+{english:"rate", meaning:"割合，速度"},
+{english:"ancestor", meaning:"祖先"},
+{english:"earthquake", meaning:"地震"},
+{english:"freedom", meaning:"自由"},
+{english:"citizen", meaning:"市民"},
+{english:"entertainment", meaning:"娯楽"},
+{english:"frame", meaning:"枠"},
+{english:"fare", meaning:"料金"},
+{english:"fault", meaning:"欠点，誤り"},
+{english:"feature", meaning:"特徴"},
+{english:"honor", meaning:"名誉"},
+{english:"role", meaning:"役割"},
+{english:"stressful", meaning:"ストレスの多い"},
+{english:"thin", meaning:"薄い，細い"},
+{english:"worth", meaning:"価値がある"},
+{english:"tough", meaning:"困難な，頑丈な"},
+{english:"well-known", meaning:"有名な"},
+{english:"thick", meaning:"厚い，太い"},
+{english:"suitable", meaning:"適した"},
+{english:"square", meaning:"正方形の"},
+{english:"full-time", meaning:"常勤の"},
+{english:"unfriendly", meaning:"不親切な"},
+{english:"likely", meaning:"ありそうな"},
+{english:"official", meaning:"公式の"},
+{english:"clear", meaning:"澄んだ，はっきりした"},
+{english:"ill", meaning:"病気で"},
+{english:"unusual", meaning:"普通でない"},
+{english:"specific", meaning:"特定の"},
+{english:"opposite", meaning:"反対の"},
+{english:"pleasant", meaning:"快い"},
+{english:"awful", meaning:"ひどい"},
+{english:"abandon", meaning:"放棄する"},
+{english:"absorb", meaning:"吸収する"},
+{english:"accomplish", meaning:"成し遂げる"},
+{english:"accuse", meaning:"非難する"},
+{english:"adapt", meaning:"適応する"},
+{english:"add", meaning:"加える"},
+{english:"admire", meaning:"称賛する"},
+{english:"adopt", meaning:"採用する，養子にする"},
+{english:"advance", meaning:"進める，進歩する"},
+{english:"afford", meaning:"余裕がある"},
+{english:"agree", meaning:"同意する"},
+{english:"aim", meaning:"狙う"},
+{english:"allow", meaning:"許す"},
+{english:"announce", meaning:"発表する"},
+{english:"anticipate", meaning:"予期する"},
+{english:"apologize", meaning:"謝る"},
+{english:"appear", meaning:"現れる"},
+{english:"apply", meaning:"申し込む，適用する"},
+{english:"appreciate", meaning:"感謝する，正しく評価する"},
+{english:"approach", meaning:"近づく，取り組む"},
+{english:"approve", meaning:"承認する"},
+{english:"argue", meaning:"議論する"},
+{english:"arrange", meaning:"整える，手配する"},
+{english:"arrive", meaning:"到着する"},
+{english:"assume", meaning:"仮定する，引き受ける"},
+{english:"attach", meaning:"添付する"},
+{english:"attempt", meaning:"試みる"},
+{english:"attend", meaning:"出席する"},
+{english:"attract", meaning:"引きつける"},
+{english:"avoid", meaning:"避ける"},
+{english:"bake", meaning:"焼く"},
+{border:"balance", meaning:"バランスをとる"},
+{english:"ban", meaning:"禁止する"},
+{english:"bathe", meaning:"入浴する"},
+{english:"bear", meaning:"耐える"},
+{english:"beat", meaning:"打つ"},
+{english:"become", meaning:"なる"},
+{english:"beg", meaning:"乞う"},
+{english:"begin", meaning:"始める"},
+{english:"behave", meaning:"振る舞う"},
+{english:"belong", meaning:"属する"},
+{english:"bend", meaning:"曲げる"},
+{english:"bet", meaning:"賭ける"},
+{english:"bind", meaning:"縛る"},
+{english:"bless", meaning:"祝福する"},
+{english:"blink", meaning:"瞬きする"},
+{english:"blush", meaning:"赤面する"},
+{english:"boast", meaning:"自慢する"},
+{english:"boil", meaning:"沸騰する"},
+{english:"borrow", meaning:"借りる"},
+{english:"bounce", meaning:"弾む"},
+{english:"bow", meaning:"お辞儀する"},
+{english:"break", meaning:"壊す"},
+{english:"breathe", meaning:"呼吸する"},
+{english:"breed", meaning:"育てる"},
+{english:"bring", meaning:"持ってくる"},
+{english:"broadcast", meaning:"放送する"},
+{english:"brush", meaning:"磨く"},
+{english:"build", meaning:"建てる"},
+{english:"burn", meaning:"燃やす"},
+{english:"burst", meaning:"破裂する"},
+{english:"bury", meaning:"埋める"},
+{english:"buy", meaning:"買う"},
+{english:"calculate", meaning:"計算する"},
+{english:"call", meaning:"呼ぶ，電話する"},
+{english:"camp", meaning:"キャンプする"},
+{english:"care", meaning:"気にする"},
+{english:"carry", meaning:"運ぶ"},
+{english:"catch", meaning:"捕まえる"},
+{english:"celebrate", meaning:"祝う"},
+{english:"challenge", meaning:"挑戦する"},
+{english:"change", meaning:"変える"},
+{english:"charge", meaning:"請求する，突進する"},
+{english:"chase", meaning:"追いかける"},
+{english:"cheer", meaning:"応援する"},
+{english:"choose", meaning:"選ぶ"},
+{english:"claim", meaning:"主張する"},
+{english:"clean", meaning:"掃除する，きれいにする"},
+{english:"clear", meaning:"片付ける，明らかにする"},
+{english:"climb", meaning:"登る"},
+{english:"close", meaning:"閉める"},
+{english:"collect", meaning:"集める"},
+{english:"combine", meaning:"結合する"},
+{english:"come", meaning:"来る"},
+{english:"comfort", meaning:"慰める"},
+{english:"command", meaning:"命令する"},
+{english:"communicate", meaning:"伝える"},
+{english:"compare", meaning:"比較する"},
+{english:"compete", meaning:"競う"},
+{english:"complain", meaning:"不平を言う"},
+{english:"complete", meaning:"完成する"},
+{english:"concern", meaning:"心配する，関係する"},
+{english:"confirm", meaning:"確認する"},
+{english:"connect", meaning:"つなぐ"},
+{english:"consider", meaning:"考慮する"},
+{english:"consist", meaning:"成り立つ"},
+{english:"contain", meaning:"含む"},
+{english:"continue", meaning:"続ける"},
+{english:"control", meaning:"制御する"},
+{english:"convince", meaning:"納得させる"},
+{english:"cope", meaning:"対処する"},
+{english:"count", meaning:"数える"},
+{english:"cover", meaning:"覆う"},
+{english:"create", meaning:"作る"},
+{english:"criticize", meaning:"批判する"},
+{english:"cross", meaning:"横切る"},
+{english:"cry", meaning:"泣く"},
+{english:"cut", meaning:"切る"},
+{english:"dance", meaning:"踊る"},
+{english:"decide", meaning:"決める"},
+{english:"defend", meaning:"守る"},
+{english:"delay", meaning:"遅らせる"},
+{english:"deliver", meaning:"配達する"},
+{english:"depend", meaning:"頼る"},
+{english:"describe", meaning:"説明する"},
+{english:"deserve", meaning:"値する"},
+{english:"destroy", meaning:"破壊する"},
+{english:"detect", meaning:"検出する"},
+{english:"develop", meaning:"発展させる"},
+{english:"die", meaning:"死ぬ"},
+{english:"dig", meaning:"掘る"},
+{english:"direct", meaning:"指示する"},
+{english:"disagree", meaning:"同意しない"},
+{english:"discover", meaning:"発見する"},
+{english:"discuss", meaning:"議論する"},
+{english:"divide", meaning:"分ける"},
+{english:"do", meaning:"する"},
+{english:"draw", meaning:"描く，引く"},
+{english:"dream", meaning:"夢を見る"},
+{english:"dress", meaning:"服を着る"},
+{english:"drink", meaning:"飲む"},
+{english:"drive", meaning:"運転する"},
+{english:"drop", meaning:"落とす"},
+{english:"earn", meaning:"稼ぐ"},
+{english:"eat", meaning:"食べる"},
+{english:"educate", meaning:"教育する"},
+{english:"elect", meaning:"選ぶ"},
+{english:"employ", meaning:"雇う"},
+{english:"enable", meaning:"可能にする"},
+{english:"encourage", meaning:"励ます"},
+{english:"end", meaning:"終わる"},
+{english:"enjoy", meaning:"楽しむ"},
+{english:"ensure", meaning:"確実にする"},
+{english:"enter", meaning:"入る"},
+{english:"establish", meaning:"設立する"},
+{english:"examine", meaning:"調べる"},
+{english:"exist", meaning:"存在する"},
+{english:"expand", meaning:"拡大する"},
+{english:"expect", meaning:"期待する"},
+{english:"experience", meaning:"経験する"},
+{english:"explain", meaning:"説明する"},
+{english:"express", meaning:"表現する"},
+{english:"extend", meaning:"延長する"},
+{english:"face", meaning:"直面する"},
+{english:"fail", meaning:"失敗する"},
+{english:"fall", meaning:"落ちる"},
+{english:"feed", meaning:"食べさせる"},
+{english:"feel", meaning:"感じる"},
+{english:"fight", meaning:"戦う"},
+{english:"fill", meaning:"満たす"},
+{english:"find", meaning:"見つける"},
+{english:"finish", meaning:"終える"},
+{english:"fit", meaning:"合う"},
+{english:"fix", meaning:"修理する"},
+{english:"fly", meaning:"飛ぶ"},
+{english:"fold", meaning:"折る"},
+{english:"follow", meaning:"従う"},
+{english:"force", meaning:"強いる"},
+{english:"forget", meaning:"忘れる"},
+{english:"forgive", meaning:"許す"},
+{english:"form", meaning:"形成する"},
+{english:"found", meaning:"設立する"},
+{english:"freeze", meaning:"凍る"},
+{english:"gain", meaning:"得る"},
+{english:"gather", meaning:"集める"},
+{english:"generate", meaning:"生み出す"},
+{english:"get", meaning:"得る"},
+{english:"give", meaning:"与える"},
+{english:"go", meaning:"行く"},
+{english:"grow", meaning:"育つ，成長する"},
+{english:"guess", meaning:"推測する"},
+{english:"guide", meaning:"案内する"},
+{english:"handle", meaning:"扱う"},
+{english:"hang", meaning:"掛ける"},
+{english:"happen", meaning:"起こる"},
+{english:"hate", meaning:"嫌う"},
+{english:"have", meaning:"持つ"},
+{english:"hear", meaning:"聞く"},
+{english:"help", meaning:"助ける"},
+{english:"hide", meaning:"隠す"},
+{english:"hit", meaning:"打つ"},
+{english:"hold", meaning:"持つ"},
+{english:"hope", meaning:"望む"},
+{english:"hurt", meaning:"傷つける"},
+{english:"identify", meaning:"特定する"},
+{english:"ignore", meaning:"無視する"},
+{english:"imagine", meaning:"想像する"},
+{english:"improve", meaning:"改善する"},
+{english:"include", meaning:"含む"},
+{english:"increase", meaning:"増やす"},
+{english:"indicate", meaning:"示す"},
+{english:"influence", meaning:"影響する"},
+{english:"inform", meaning:"知らせる"},
+{english:"intend", meaning:"意図する"},
+{english:"introduce", meaning:"紹介する"},
+{english:"invest", meaning:"投資する"},
+{english:"invite", meaning:"招待する"},
+{english:"involve", meaning:"巻き込む"},
+{english:"join", meaning:"参加する"},
+{english:"jump", meaning:"跳ぶ"},
+{english:"keep", meaning:"保つ"},
+{english:"kick", meaning:"蹴る"},
+{english:"kill", meaning:"殺す"},
+{english:"know", meaning:"知る"},
+{english:"laugh", meaning:"笑う"},
+{english:"learn", meaning:"学ぶ"},
+{english:"leave", meaning:"去る，残す"},
+{english:"lend", meaning:"貸す"},
+{english:"let", meaning:"させる"},
+{english:"lie", meaning:"横たわる"},
+{english:"lift", meaning:"持ち上げる"},
+{english:"like", meaning:"好き"} ,
+{english:"listen", meaning:"聞く"},
+{english:"live", meaning:"住む，生きる"},
+{english:"look", meaning:"見る"},
+{english:"lose", meaning:"失う"},
+{english:"love", meaning:"愛する"},
+{english:"maintain", meaning:"維持する"},
+{english:"manage", meaning:"管理する，うまくやる"},
+{english:"mark", meaning:"印をつける"},
+{english:"match", meaning:"一致する，試合"},
+{english:"measure", meaning:"測る"},
+{english:"meet", meaning:"会う"},
+{english:"mention", meaning:"言及する"},
+{english:"mind", meaning:"気にする"},
+{english:"miss", meaning:"逃す，恋しく思う"},
+{english:"mix", meaning:"混ぜる"},
+{english:"move", meaning:"動く，移動する"},
+{english:"need", meaning:"必要とする"},
+{english:"note", meaning:"注意する，書き留める"},
+{english:"notice", meaning:"気づく"},
+{english:"obtain", meaning:"入手する"},
+{english:"occur", meaning:"起こる"},
+{english:"offer", meaning:"提供する"},
+{english:"open", meaning:"開ける"},
+{english:"operate", meaning:"操作する，手術する"},
+{english:"order", meaning:"命じる，注文"},
+{english:"organize", meaning:"組織する"},
+{english:"own", meaning:"所有する"},
+{english:"paint", meaning:"塗る，描く"},
+{english:"participate", meaning:"参加する"},
+{english:"pass", meaning:"通る，合格する"},
+{english:"pay", meaning:"支払う"},
+{english:"perform", meaning:"演じる，実行する"},
+{english:"permit", meaning:"許可する"},
+{english:"persuade", meaning:"説得する"},
+{english:"plan", meaning:"計画する"},
+{english:"play", meaning:"遊ぶ，演奏する"},
+{english:"point", meaning:"指す"},
+{english:"practice", meaning:"練習する"},
+{english:"prepare", meaning:"準備する"},
+{english:"present", meaning:"提示する，贈る"},
+{english:"prevent", meaning:"防ぐ"},
+{english:"produce", meaning:"生産する"},
+{english:"promise", meaning:"約束する"},
+{english:"protect", meaning:"守る"},
+{english:"prove", meaning:"証明する"},
+{english:"provide", meaning:"提供する"},
+{english:"pull", meaning:"引く"},
+{english:"push", meaning:"押す"},
+{english:"put", meaning:"置く"},
+{english:"question", meaning:"質問する"},
+{english:"quit", meaning:"やめる"},
+{english:"raise", meaning:"上げる"},
+{english:"reach", meaning:"達する"},
+{english:"read", meaning:"読む"},
+{english:"realize", meaning:"気づく"},
+{english:"receive", meaning:"受け取る"},
+{english:"recognize", meaning:"認識する"},
+{english:"record", meaning:"記録する"},
+{english:"reduce", meaning:"減らす"},
+{english:"refer", meaning:"言及する"},
+{english:"reflect", meaning:"反映する"},
+{english:"refuse", meaning:"断る"},
+{english:"regret", meaning:"後悔する"},
+{english:"relate", meaning:"関連する"},
+{english:"remain", meaning:"残る"},
+{english:"remember", meaning:"覚えている"},
+{english:"remind", meaning:"思い出させる"},
+{english:"remove", meaning:"取り除く"},
+{english:"repair", meaning:"修理する"},
+{english:"repeat", meaning:"繰り返す"},
+{english:"replace", meaning:"置き換える"},
+{english:"reply", meaning:"返事をする"},
+{english:"report", meaning:"報告する"},
+{english:"represent", meaning:"代表する"},
+{english:"require", meaning:"必要とする"},
+{english:"resist", meaning:"抵抗する"},
+{english:"respond", meaning:"応答する"},
+{english:"rest", meaning:"休む"},
+{english:"result", meaning:"結果となる"},
+{english:"return", meaning:"戻る"},
+{english:"reveal", meaning:"明らかにする"},
+{english:"rise", meaning:"上がる"},
+{english:"run", meaning:"走る"},
+{english:"save", meaning:"救う，節約する"},
+{english:"say", meaning:"言う"},
+{english:"search", meaning:"探す"},
+{english:"see", meaning:"見る"},
+{english:"sell", meaning:"売る"},
+{english:"send", meaning:"送る"},
+{english:"serve", meaning:"仕える，提供する"},
+{english:"set", meaning:"置く"},
+{english:"settle", meaning:"落ち着く"},
+{english:"share", meaning:"共有する"},
+{english:"shoot", meaning:"撃つ"},
+{english:"show", meaning:"見せる"},
+{english:"shut", meaning:"閉める"},
+{english:"sign", meaning:"署名する"},
+{english:"sing", meaning:"歌う"},
+{english:"sit", meaning:"座る"},
+{english:"sleep", meaning:"眠る"},
+{english:"smile", meaning:"微笑む"},
+{english:"solve", meaning:"解決する"},
+{english:"sound", meaning:"音がする"},
+{english:"speak", meaning:"話す"},
+{english:"spend", meaning:"使う"},
+{english:"stand", meaning:"立つ"},
+{english:"start", meaning:"始める"},
+{english:"stay", meaning:"滞在する"},
+{english:"stop", meaning:"止める"},
+{english:"study", meaning:"勉強する"},
+{english:"suggest", meaning:"提案する"},
+{english:"succeed", meaning:"成功する"},
+{english:"suffer", meaning:"苦しむ"},
+{english:"suggest", meaning:"提案する"},
+{english:"support", meaning:"支援する"},
+{english:"suppose", meaning:"仮定する"},
+{english:"surprise", meaning:"驚かせる"},
+{english:"take", meaning:"取る"},
+{english:"talk", meaning:"話す"},
+{english:"teach", meaning:"教える"},
+{english:"tell", meaning:"伝える"},
+{english:"test", meaning:"テストする"},
+{english:"thank", meaning:"感謝する"},
+{english:"think", meaning:"考える"},
+{english:"throw", meaning:"投げる"},
+{english:"touch", meaning:"触る"},
+{english:"train", meaning:"訓練する"},
+{english:"translate", meaning:"翻訳する"},
+{english:"travel", meaning:"旅行する"},
+{english:"treat", meaning:"扱う，治療する"},
+{english:"try", meaning:"試す"},
+{english:"turn", meaning:"回る，変える"},
+{english:"understand", meaning:"理解する"},
+{english:"use", meaning:"使う"},
+{english:"visit", meaning:"訪れる"},
+{english:"wait", meaning:"待つ"},
+{english:"walk", meaning:"歩く"},
+{english:"want", meaning:"欲しい"},
+{english:"watch", meaning:"見る"},
+{english:"win", meaning:"勝つ"},
+{english:"wish", meaning:"望む"},
+{english:"work", meaning:"働く"},
+{english:"worry", meaning:"心配する"},
+{english:"write", meaning:"書く"},
+
+    ];
+
+    // 💬 生徒を励ますメッセージ集
+    const cheerMessages = [
+      "時は金なり。",
+      "千里の道も一歩から。",
+      "失敗は成功のもと。",
+      "限界突破",
+      "努力は裏切らない。",
+      "継続は力なり。",
+      " 雲の向こうは、いつも青空。",
+      "百戦錬磨",
+      "失敗なくして成長なし。",
+      "思い立ったが吉日。",
+      "人事を尽くして天命を待つ。"
+    ];
+
+    // ===== 設定 =====
+    let darkMode = localStorage.getItem("darkMode") === "true";
+    let soundOn = localStorage.getItem("soundOn") !== "false"; 
+    let seOn = localStorage.getItem("seOn") !== "false";       
+    let bgmOn = localStorage.getItem("bgmOn") === "true";       
+    let effectOn = localStorage.getItem("effectOn") !== "false"; 
+    let passRate = Number(localStorage.getItem("passRate") || 100);
+    let passedRanges = JSON.parse(localStorage.getItem("passedRanges")||"[]");
+
+    const SLIDE_SPEED_MS = 2000; 
+
+    document.documentElement.setAttribute("data-theme", darkMode ? "dark" : "light");
+
+    // ===== 🎹 WEB AUDIO API サウンドシステム =====
+    let audioCtx = null;
+    let bgmInterval = null;
+    let bgmStep = 0;
+
+    function initAudio() {
+      if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    }
+
+    function playClickSE() {
+      if (!seOn) return; initAudio();
+      let osc = audioCtx.createOscillator(); let gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.type = "sine"; osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.06);
+    }
+
+    function playCorrectSE(isBigCombo = false) {
+      if (!seOn) return; initAudio();
+      let now = audioCtx.currentTime;
+      if (!isBigCombo) {
+        [523.25, 659.25, 783.99].forEach((f, i) => {
+          let osc = audioCtx.createOscillator(); let gain = audioCtx.createGain();
+          osc.connect(gain); gain.connect(audioCtx.destination);
+          osc.type = "triangle"; osc.frequency.setValueAtTime(f, now + i * 0.04);
+          gain.gain.setValueAtTime(0.1, now + i * 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.04 + 0.3);
+          osc.start(now + i * 0.04); osc.stop(now + i * 0.04 + 0.35);
+        });
+      } else {
+        let notes = [523.25, 587.33, 659.25, 783.99, 1046.50];
+        notes.forEach((f, i) => {
+          let osc = audioCtx.createOscillator(); let gain = audioCtx.createGain();
+          osc.connect(gain); gain.connect(audioCtx.destination);
+          osc.type = "sine"; osc.frequency.setValueAtTime(f, now + i * 0.07);
+          let dur = i === notes.length - 1 ? 0.6 : 0.2;
+          gain.gain.setValueAtTime(0.12, now + i * 0.07);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.07 + dur);
+          osc.start(now + i * 0.07); osc.stop(now + i * 0.07 + dur + 0.05);
+        });
+      }
+    }
+
+    function playWrongSE() {
+      if (!seOn) return; initAudio();
+      let now = audioCtx.currentTime;
+      let osc1 = audioCtx.createOscillator(); let osc2 = audioCtx.createOscillator();
+      let gain = audioCtx.createGain();
+      osc1.connect(gain); osc2.connect(gain); gain.connect(audioCtx.destination);
+      osc1.type = "sawtooth"; osc1.frequency.setValueAtTime(140, now);
+      osc2.type = "sawtooth"; osc2.frequency.setValueAtTime(143, now); 
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.3);
+      osc1.start(); osc2.start();
+      osc1.stop(now + 0.35); osc2.stop(now + 0.35);
+    }
+
+    function startBGM(mode) {
+      if (!bgmOn) return; initAudio(); stopBGM();
+      bgmStep = 0;
+      let melody = []; let speed = 400;
+      if (mode === "test") {
+        melody = [329.63, 392.00, 440.00, 523.25, 392.00, 440.00, 493.88, 587.33, 440.00, 493.88, 523.25, 659.25, 392.00, 349.23, 329.63, 293.66];
+        speed = 300;
+      } else if (mode === "return") {
+        melody = [220.00, 261.63, 329.63, 261.63, 293.66, 349.23, 440.00, 349.23, 261.63, 329.63, 392.00, 329.63, 196.00, 246.94, 293.66, 246.94];
+        speed = 380;
+      } else {
+        melody = [261.63, 329.63, 392.00, 493.88, 349.23, 440.00, 523.25, 587.33];
+        speed = 500;
+      }
+      bgmInterval = setInterval(() => {
+        let now = audioCtx.currentTime;
+        let osc = audioCtx.createOscillator(); let gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.type = "sine"; osc.frequency.setValueAtTime(melody[bgmStep % melody.length], now);
+        gain.gain.setValueAtTime(0.018, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + (speed / 1000) * 0.9);
+        osc.start(); osc.stop(now + (speed / 1000));
+        bgmStep++;
+      }, speed);
+    }
+
+    function stopBGM() {
+      if (bgmInterval) { clearInterval(bgmInterval); bgmInterval = null; }
+    }
+
+    document.addEventListener("click", function(e) {
+      if(e.target && (e.target.tagName === "BUTTON" || e.target.classList.contains("switch"))) {
+        playClickSE();
+      }
+    });
+
+    function speak(word, speechRate = 1.1){
+      if(!soundOn) return;
+      speechSynthesis.cancel(); 
+      let u = new SpeechSynthesisUtterance(word);
+      u.lang = "en-US"; u.rate = speechRate; 
+      speechSynthesis.speak(u);
+    }
+
+    // ===== DOM要素 =====
+    const home=document.getElementById("home");
+    const studyMenu=document.getElementById("studyMenu");
+    const cardMenu=document.getElementById("cardMenu");
+    const cardView=document.getElementById("cardView");
+    const slide=document.getElementById("slide");
+    const test=document.getElementById("test");
+    const returnDiv=document.getElementById("return");
+    const returnEmpty=document.getElementById("returnEmpty");
+    const progress=document.getElementById("progress");
+    const resumeBtn=document.getElementById("resumeBtn");
+    const startBtn=document.getElementById("startBtn");
+    const stopBtn=document.getElementById("stopBtn");
+    const restartBtn=document.getElementById("restartBtn");
+    const t_progress=document.getElementById("t_progress");
+    const question=document.getElementById("question");
+    const choices=document.getElementById("choices");
+    const result=document.getElementById("result");
+    const nextBtn=document.getElementById("nextBtn");
+    const r_progress=document.getElementById("r_progress");
+    const r_question=document.getElementById("r_question");
+    const r_choices=document.getElementById("r_choices");
+    const r_result=document.getElementById("r_result");
+    const r_nextBtn=document.getElementById("r_nextBtn");
+    const lastScoreDisplay=document.getElementById("lastScoreDisplay");
+    
+    const resultScreen=document.getElementById("resultScreen");
+    const resTitle=document.getElementById("resTitle");
+    const resSub=document.getElementById("resSub");
+    const resScore=document.getElementById("resScore");
+    const retryBtn=document.getElementById("retryBtn");
+    const closeResBtn=document.getElementById("closeResBtn");
+
+    let timer=null, i=0;
+    let slideWords=[], testWords=[], cardWords=[], current=0, wrong=[], selectedWord=null;
+    let rIndex=0; let cardIndex=0;
+    let currentTestRangeKey = ""; let currentStartIdx = 0; let currentEndIdx = 0;
+    let resultMode = "test"; let comboCount = 0;
+
+    // ===== 💫 エフェクトシステム 💫 =====
+    const canvas = document.getElementById("confettiCanvas");
+    const ctx = canvas.getContext("2d");
+    let particles = []; let isConfettiMode = false; let animationFrameId = null;
+
+    function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    window.addEventListener("resize", resizeCanvas); resizeCanvas();
+
+    function triggerPopEffect(element) {
+      if(!effectOn || !element) return;
+      const rect = element.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2; const centerY = rect.top + rect.height / 2;
+      const colors = ["#4CAF50", "#2196F3", "#ff9800", "#ff4d4d", "#e91e63", "#ffeb3b"];
+      isConfettiMode = false; 
+      for (let k = 0; k < 20; k++) {
+        const angle = Math.random() * Math.PI * 2; const speed = Math.random() * 6 + 4; 
+        particles.push({
+          x: centerX, y: centerY, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+          size: Math.random() * 5 + 5, color: colors[Math.floor(Math.random() * colors.length)],
+          alpha: 1, decay: Math.random() * 0.03 + 0.03, type: Math.random() > 0.4 ? "star" : "circle"
+        });
+      }
+      if (!animationFrameId) { updateParticles(); }
+    }
+
+    function triggerScreenBurst() {
+      if(!effectOn) return;
+      isConfettiMode = true; 
+      const colors = ["#ffeb3b", "#ff4d4d", "#4da6ff", "#4CAF50", "#e91e63"];
+      for (let k = 0; k < 120; k++) {
+        particles.push({
+          x: Math.random() * canvas.width, y: Math.random() * -canvas.height - 20,
+          vx: Math.random() * 4 - 2, vy: Math.random() * 4 + 3, 
+          size: Math.random() * 8 + 6, color: colors[Math.floor(Math.random() * colors.length)],
+          rotation: Math.random() * 360, rotationSpeed: Math.random() * 6 - 3, alpha: 1
+        });
+      }
+      if (!animationFrameId) { updateParticles(); }
+    }
+
+    function drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius, color, alpha) {
+      let rot = Math.PI / 2 * 3; let x = cx; let y = cy; let step = Math.PI / spikes;
+      ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(cx, cy - outerRadius)
+      for (let idx = 0; idx < spikes; idx++) {
+        x = cx + Math.cos(rot) * outerRadius; y = cy + Math.sin(rot) * outerRadius; ctx.lineTo(x, y); rot += step;
+        x = cx + Math.cos(rot) * innerRadius; y = cy + Math.sin(rot) * innerRadius; ctx.lineTo(x, y); rot += step;
+      }
+      ctx.lineTo(cx, cy - outerRadius); ctx.closePath(); ctx.fill(); ctx.restore();
+    }
+
+    function updateParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (isConfettiMode) {
+        let alive = false;
+        particles.forEach(p => {
+          p.y += p.vy; p.x += p.vx; p.rotation += p.rotationSpeed;
+          if (p.y < canvas.height) { alive = true; }
+          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rotation * Math.PI / 180); ctx.fillStyle = p.color; ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size); ctx.restore();
+        });
+        if (alive) { animationFrameId = requestAnimationFrame(updateParticles); } 
+        else { particles = []; animationFrameId = null; }
+      } else {
+        particles.forEach((p, index) => {
+          p.x += p.vx; p.y += p.vy; p.vy += 0.12; p.alpha -= p.decay;
+          if (p.alpha <= 0) { particles.splice(index, 1); } 
+          else {
+            if (p.type === "star") { drawStar(ctx, p.x, p.y, 5, p.size, p.size / 2, p.color, p.alpha); } 
+            else { ctx.save(); ctx.globalAlpha = p.alpha; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size / 2, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+          }
+        });
+        if (particles.length > 0) { animationFrameId = requestAnimationFrame(updateParticles); } 
+        else { animationFrameId = null; }
+      }
+    }
+
+    function updateCombo(isCorrect) {
+      const tCombo = document.getElementById("t_combo"); const rCombo = document.getElementById("r_combo");
+      if(isCorrect) {
+        comboCount++;
+        if(comboCount > 0 && effectOn) {
+          [tCombo, rCombo].forEach(el => {
+            el.innerText = `🔥 ${comboCount} COMBO`; el.style.animation = "none"; el.offsetHeight; 
+            el.style.animation = "comboFlashAnim 1.0s ease-out forwards";
+          });
+        }
+        let bigComboText = ""; let comboColor = "#ff3d00"; let isBigMilestone = false;
+        if(comboCount === 5) { bigComboText = "5 COMBO! Nice Move!"; comboColor = "#00b0ff"; isBigMilestone = true; }
+        else if(comboCount === 10) { bigComboText = "10 COMBO! Great!"; comboColor = "#ffea00"; isBigMilestone = true; }
+        else if(comboCount === 15) { bigComboText = "15 COMBO! Amazing!!"; comboColor = "#ff9100"; isBigMilestone = true; }
+        else if(comboCount === 20) { bigComboText = "✨20 COMBO! PERFECT!!!✨"; comboColor = "#ff1744"; isBigMilestone = true; }
+        playCorrectSE(isBigMilestone);
+        if(bigComboText !== "" && effectOn) {
+          const popup = document.getElementById("comboPopup");
+          popup.innerText = bigComboText; popup.style.color = comboColor; popup.style.animation = "none"; popup.offsetHeight; 
+          popup.style.animation = "comboAnim 1.4s ease forwards";
+        }
+      } else {
+        comboCount = 0; playWrongSE(); tCombo.innerText = ""; rCombo.innerText = "";
+        tCombo.style.animation = "none"; rCombo.style.animation = "none";
+      }
+    }
+
+    function refreshCheerMessage() {
+      const msgBox = document.getElementById("cheerMessage");
+      msgBox.innerText = cheerMessages[Math.floor(Math.random() * cheerMessages.length)];
+    }
+
+    // ===== 設定UIコントロール =====
+    function openSettings(){ hideAll(); document.getElementById("settings").style.display="block"; updateSettingsUI(); }
+    function toggleDarkMode(){
+      darkMode = !darkMode; localStorage.setItem("darkMode", darkMode);
+      document.documentElement.setAttribute("data-theme", darkMode ? "dark" : "light");
+      updateSettingsUI();
+    }
+    function toggleSound(){ soundOn=!soundOn; localStorage.setItem("soundOn", soundOn); updateSettingsUI(); }
+    function toggleSE(){ seOn=!seOn; localStorage.setItem("seOn", seOn); updateSettingsUI(); }
+    function toggleBGM(){
+      bgmOn=!bgmOn; localStorage.setItem("bgmOn", bgmOn);
+      if(bgmOn) { startBGM("test"); } else { stopBGM(); }
+      updateSettingsUI();
+    }
+    function toggleEffect(){ effectOn=!effectOn; localStorage.setItem("effectOn", effectOn); updateSettingsUI(); }
+    function setPass(val){
+      let pw = prompt("パスワード:");
+      if(pw==="sakura"){ passRate = val; localStorage.setItem("passRate", passRate); updateSettingsUI(); } else alert("パスワード違い");
+    }
+    function updateSettingsUI(){
+      document.getElementById("darkSwitch").classList.toggle("active", darkMode);
+      document.getElementById("soundSwitch").classList.toggle("active", soundOn);
+      document.getElementById("seSwitch").classList.toggle("active", seOn);
+      document.getElementById("bgmSwitch").classList.toggle("active", bgmOn);
+      document.getElementById("effectSwitch").classList.toggle("active", effectOn);
+      let t="";
+      if(passRate==60) t="かんたん (60%)"; else if(passRate==80) t="ふつう (80%)"; else if(passRate==90) t="むずかしい (90%)"; else t="鬼100%";
+      document.getElementById("passDisplay").innerText=t;
+    }
+
+    function showScore(){
+      const disp=document.getElementById("scoreDisplay");
+      let lastScore=localStorage.getItem("lastScore")||0; let lastTotal=localStorage.getItem("lastTotal")||0;
+      disp.innerHTML = lastTotal > 0 ? `前回テスト(全体): ${lastScore} / ${lastTotal}` : "テストの履歴がありません";
+    }
+
+    // ===== 共通表示切り替え =====
+    function hideAll(){
+      home.style.display="none"; studyMenu.style.display="none"; cardMenu.style.display="none"; cardView.style.display="none"; slide.style.display="none"; test.style.display="none"; returnDiv.style.display="none"; returnEmpty.style.display="none"; resultScreen.style.display="none"; document.getElementById("testMenu").style.display="none"; document.getElementById("slideMenu").style.display="none"; document.getElementById("settings").style.display="none";
+    }
+    function goHome(){ comboCount = 0; stopSlide(); stopBGM(); hideAll(); home.style.display="block"; showScore(); refreshCheerMessage(); }
+    function backToStudyMenu(){ stopSlide(); stopBGM(); hideAll(); studyMenu.style.display="block"; }
+    function backToSlideMenu(){ stopSlide(); stopBGM(); hideAll(); document.getElementById("slideMenu").style.display="block"; }
+    function backToCardMenu(){ hideAll(); cardMenu.style.display="block"; }
+    function backToTestMenu(){ stopBGM(); hideAll(); showTestMenu(); }
+    function showStudyMenu(){ hideAll(); studyMenu.style.display="block"; }
+
+    // ===== スライドショー =====
+    function showSlideMenu(){
+      hideAll(); document.getElementById("slideMenu").style.display="block";
+      let html="", size=20; 
+      for(let i=0;i<words.length;i+=size){
+        let start=i, end=Math.min(i+size,words.length);
+        html+=`<button class="red" onclick="startSlideRange(${start},${end})">${start+1}-${end}</button><br>`;
+      }
+      document.getElementById("slideRangeButtons").innerHTML=html;
+    }
+    function startSlideRange(start,end){
+      slideWords=words.slice(start,end); hideAll(); slide.style.display="block"; startBGM("slide"); i=0; 
+      document.getElementById("slideEnglish").innerText=""; document.getElementById("slideMeaning").innerText=""; progress.innerText="";
+      startBtn.style.display="inline-block"; resumeBtn.style.display="none"; stopBtn.style.display="none"; restartBtn.style.display="none";
+    }
+    function startSlide(){ startBtn.style.display="none"; resumeBtn.style.display="none"; stopBtn.style.display="inline-block"; restartBtn.style.display="none"; i=0; runSlide(); }
+    function runSlide(){
+      displayAndSpeakCurrentSlide(); i++;
+      timer=setInterval(()=>{
+        if(i>=slideWords.length){
+          clearInterval(timer); document.getElementById("slideEnglish").innerText="終了！"; document.getElementById("slideMeaning").innerText="";
+          stopBtn.style.display="none"; resumeBtn.style.display="none"; restartBtn.style.display="inline-block"; return;
+        }
+        displayAndSpeakCurrentSlide(); i++;
+      }, SLIDE_SPEED_MS);
+    }
+    function displayAndSpeakCurrentSlide(){
+      let w=slideWords[i]; progress.innerText=(i+1)+" / "+slideWords.length;
+      document.getElementById("slideEnglish").innerText = w.english; document.getElementById("slideMeaning").innerText = w.meaning;
+      speak(w.english, 1.15);
+    }
+    function stopSlide(){ clearInterval(timer); speechSynthesis.cancel(); stopBtn.style.display="none"; if(i<slideWords.length) { resumeBtn.style.display="inline-block"; } }
+    function resumeSlide(){ resumeBtn.style.display="none"; stopBtn.style.display="inline-block"; runSlide(); }
+    function restartSlide(){ restartBtn.style.display="none"; startSlide(); }
+
+    // ===== 単語帳 =====
+    function showCardMenu(){
+      hideAll(); cardMenu.style.display="block";
+      let html="", size=20;
+      for(let i=0;i<words.length;i+=size){
+        let start=i, end=Math.min(i+size,words.length);
+        html+=`<button class="orange" onclick="startCardRange(${start},${end})">${start+1}-${end}</button><br>`;
+      }
+      document.getElementById("cardRangeButtons").innerHTML=html;
+    }
+    function startCardRange(start,end){ cardWords=words.slice(start,end); hideAll(); cardView.style.display="block"; cardIndex=0; updateCard(false); }
+    function updateCard(shouldSpeak = false){
+      let w = cardWords[cardIndex];
+      document.getElementById("cardProgress").innerText = `${cardIndex+1} / ${cardWords.length}`;
+      document.getElementById("cardEnglish").innerHTML = w.english + `<button class="icon-btn" onclick="speak('${w.english}')">🔊</button>`;
+      document.getElementById("cardMeaning").innerText = w.meaning;
+      document.getElementById("cardPrevBtn").disabled = (cardIndex === 0);
+      document.getElementById("cardNextBtn").disabled = (cardIndex === cardWords.length - 1);
+      if(shouldSpeak) { speak(w.english); }
+    }
+    function nextCard(){ if(cardIndex < cardWords.length - 1){ cardIndex++; updateCard(false); } }
+    function prevCard(){ if(cardIndex > 0){ cardIndex--; updateCard(false); } }
+
+    // ===== テスト =====
+    function showTestMenu(){
+      hideAll(); comboCount = 0; stopBGM(); document.getElementById("testMenu").style.display="block";
+      let html="", size=20;
+      for(let i=0;i<words.length;i+=size){
+        let start=i, end=Math.min(i+size,words.length); let rangeKey = `${start}-${end}`;
+        let lastScoreRange = localStorage.getItem(`lastScoreRange_${rangeKey}`) || "未受験";
+        let highScoreRange = localStorage.getItem(`highScoreRange_${rangeKey}`) || "なし";
+        let highScoreRaw = Number(localStorage.getItem(`highScoreRangeRaw確定_${rangeKey}`) || -1);
+        let starPrefix = (highScoreRaw >= Math.ceil((end - start) * (passRate / 100)) && highScoreRaw !== -1) ? "⭐ " : "";
+        html += `<button class="blue" style="width:340px;" onclick="startTestRange(${start},${end})">${start+1}-${end}<br><span style="font-size:12px; font-weight:normal;">前回：${lastScoreRange} | 最高：${starPrefix}${highScoreRange}</span></button><br>`;
+      }
+      document.getElementById("rangeButtons").innerHTML = html;
+    }
+    function startTestRange(start,end){
+      currentStartIdx = start; currentEndIdx = end; testWords=words.slice(start,end); currentTestRangeKey = `${start}-${end}`; hideAll(); test.style.display="block"; startBGM("test"); 
+      current=0; wrong=[]; resultMode = "test"; comboCount = 0;
+      let rangeLastScore = localStorage.getItem(`lastScoreRange_${currentTestRangeKey}`) || "未受験";
+      let rangeHighScore = localStorage.getItem(`highScoreRange_${currentTestRangeKey}`) || "なし";
+      lastScoreDisplay.innerHTML = `前回：${rangeLastScore} ｜ 最高：${rangeHighScore}`;
+      showQ();
+    }
+    function showQ(){
+      let w=testWords[current]; selectedWord=w; t_progress.innerText = `${current+1} / ${testWords.length}`;
+      question.innerHTML=w.english + `<button class="icon-btn" onclick="speak('${w.english}')">🔊</button>`;
+      result.innerText=""; nextBtn.style.display="none";
+      let options=[w.meaning];
+      while(options.length<4){
+        let r=words[Math.floor(Math.random()*words.length)].meaning;
+        if(!options.includes(r)) options.push(r);
+      }
+      options.sort(()=>Math.random()-0.5); choices.innerHTML="";
+      options.forEach(c=>choices.innerHTML+=`<button class="choice" onclick="check(this,'${c}')">${c}</button>`);
+    }
+    
+    function check(btn, ans){
+      let correct = selectedWord.meaning; let isCorrect = (ans === correct);
+      document.querySelectorAll("#choices button").forEach(b => { b.disabled = true; if(b.innerText === correct) { b.classList.add("correct-choice"); } else if (b === btn && !isCorrect) { b.classList.add("wrong-choice"); } });
+      
+      updateCombo(isCorrect); 
+
+      // 💡 正解・不正解のテキストと、常に正解の意味を表示
+      if(isCorrect){ 
+        result.innerHTML = `<span style='color:#4CAF50;'>⭕ 正解！</span><br><span style='font-size:18px; color:var(--text-color); font-weight:normal;'>意味: ${correct}</span>`; 
+        triggerPopEffect(btn); 
+      } else { 
+        result.innerHTML = `<span style='color:#ff4d4d;'>❌ 不正解...</span><br><span style='font-size:20px; color:#ff9800;'>正解は：【${correct}】</span>`; 
+        wrong.push(selectedWord); 
+        let currentReturnList = JSON.parse(localStorage.getItem("returnList") || "[]"); 
+        if(!currentReturnList.some(item => item.english === selectedWord.english)){ currentReturnList.push(selectedWord); localStorage.setItem("returnList", JSON.stringify(currentReturnList)); } 
+      }
+      
+      let solvedCount = current + 1; let correctCount = solvedCount - wrong.length;
+      localStorage.setItem(`lastScoreRange_${currentTestRangeKey}`, `${correctCount}/${solvedCount} (途中)`);
+      nextBtn.style.display = "inline-block";
+    }
+    
+    function nextQ(){
+      current++;
+      if(current < testWords.length){ showQ(); } 
+      else {
+        stopBGM();
+        let score = testWords.length - wrong.length; let total = testWords.length; let isPass = score >= Math.ceil(total*(passRate/100));
+        if(isPass){ if(!passedRanges.includes(currentTestRangeKey)) passedRanges.push(currentTestRangeKey); localStorage.setItem("passedRanges", JSON.stringify(passedRanges)); }
+        localStorage.setItem("lastScore", score); localStorage.setItem("lastTotal", total);
+        let passedLabel = isPass ? "⭐合格" : "未合格"; localStorage.setItem(`lastScoreRange_${currentTestRangeKey}`, `${score}/${total} (${passedLabel})`);
+        let finalHighRaw = localStorage.getItem(`highScoreRangeRaw確定_${currentTestRangeKey}`) || -1;
+        if (score > finalHighRaw) { localStorage.setItem(`highScoreRangeRaw確定_${currentTestRangeKey}`, score); localStorage.setItem(`highScoreRange_${currentTestRangeKey}`, `${score}/${total}`); }
+        showGrandResult(isPass, score, total);
+      }
+    }
+
+    function showGrandResult(isPass, score, total) {
+      hideAll(); resultScreen.style.display = "flex"; closeResBtn.innerText = "🏠 範囲選択へ戻る";
+      if(isPass) {
+        resultScreen.className = "result-screen pass-bg"; resTitle.innerText = "⭐ 合格！ ⭐"; resSub.innerText = "おめでとう！素晴らしい仕上がりです！"; resScore.innerText = `${score} / ${total} 点`; retryBtn.style.display = "none";
+        triggerScreenBurst(); 
+      } else {
+        resultScreen.className = "result-screen fail-bg"; resTitle.innerText = "不合格"; resSub.innerText = "残念！もう一度挑戦しよう！"; resScore.innerText = `${score} / ${total} 点`; retryBtn.style.display = "inline-block"; retryBtn.onclick = function() { resultScreen.style.display = "none"; startTestRange(currentStartIdx, currentEndIdx); };
+      }
+    }
+
+    function showReturnClearResult() {
+      hideAll(); resultScreen.style.display = "flex"; resultScreen.className = "result-screen return-clear-bg"; resTitle.innerText = "🏆 リターン全制覇！ 🏆"; resSub.innerText = "すべての苦手を見事に克服しました！完璧です！"; resScore.innerText = "残り問題：0 問"; retryBtn.style.display = "none"; closeResBtn.innerText = "🏠 ホームへ戻る";
+      triggerScreenBurst(); 
+    }
+
+    function closeResultScreen() { resultScreen.style.display = "none"; if(resultMode === "return") { goHome(); } else { backToTestMenu(); } }
+
+    // ===== リターン学習 =====
+    function goReturn(){
+      hideAll(); wrong = JSON.parse(localStorage.getItem("returnList")||"[]");
+      if(wrong.length===0){ returnEmpty.style.display="block"; return; }
+      resultMode = "return"; returnDiv.style.display="block"; startBGM("return"); rIndex=0; comboCount = 0; showR();
+    }
+    function showR(){
+      let w=wrong[rIndex]; r_progress.innerText=(rIndex+1)+" / "+wrong.length;
+      r_question.innerHTML=w.english + `<button class="icon-btn" onclick="speak('${w.english}')">🔊</button>`;
+      r_result.innerText=""; r_nextBtn.style.display="none";
+      let options=[w.meaning];
+      while(options.length<4){
+        let r=words[Math.floor(Math.random()*words.length)].meaning;
+        if(!options.includes(r)) options.push(r);
+      }
+      options.sort(()=>Math.random()-0.5); r_choices.innerHTML=""; options.forEach(c=>r_choices.innerHTML+=`<button class="choice" onclick="checkR(this,'${c}')">${c}</button>`);
+    }
+    
+    let isCorrectThisTurn = false;
+    function checkR(btn,ans){
+      let currentWord = wrong[rIndex]; let correct=currentWord.meaning; let isCorrect = (ans === correct);
+      document.querySelectorAll("#r_choices button").forEach(b=>{ b.disabled=true; if(b.innerText === correct) { b.classList.add("correct-choice"); } else if (b === btn && !isCorrect) { b.classList.add("wrong-choice"); } });
+      
+      updateCombo(isCorrect); 
+
+      // 💡 リターン側でも正解の日本語を常に明示
+      if(isCorrect){ 
+        r_result.innerHTML=`<span style='color:#4CAF50;'>⭕ 正解！</span><br><span style='font-size:18px; color:var(--text-color); font-weight:normal;'>意味: ${correct}</span>`; 
+        triggerPopEffect(btn); isCorrectThisTurn = true;
+        wrong.splice(rIndex, 1); localStorage.setItem("returnList", JSON.stringify(wrong));
+      } else { 
+        r_result.innerHTML=`<span style='color:#ff4d4d;'>❌ 不正解...</span><br><span style='font-size:20px; color:#ff9800;'>正解は：【${correct}】</span>`; 
+        isCorrectThisTurn = false;
+      }
+      r_nextBtn.style.display="inline-block";
+    }
+    
+    function nextR(){ 
+      if(!isCorrectThisTurn) { rIndex++; }
+      if(wrong.length === 0) { stopBGM(); showReturnClearResult(); } 
+      else if(rIndex >= wrong.length){ 
+        stopBGM(); alert(`リターン学習を1周しました！\n（残り ${wrong.length} 問あります。もう一度挑戦して完璧にしましょう！）`); goHome(); 
+      } else { showR(); }
+    }
+
+    // ===== データリセット =====
+    function resetDataPrompt(){
+      let pw=prompt("パスワードを入力してください:");
+      if(pw==="sakura2026"){ if(confirm("本当に全てのデータをリセットしますか？")){ localStorage.clear(); passedRanges=[]; alert("データをリセットしました！"); showScore(); } } 
+      else { alert("パスワードが違います！"); }
+    }
+
+    // 起動時処理
+    showScore(); refreshCheerMessage(); 
+  </script>
+</body>
+</html>
